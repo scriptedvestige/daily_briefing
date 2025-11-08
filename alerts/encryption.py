@@ -18,7 +18,7 @@ class Encryptor():
     def generate_key(self):
         """Create key to be used for encryption and decryption."""
         # If key does not already exist, make a key.
-        if not self.check_key:
+        if not self.check_key():
             self.key = Fernet.generate_key()
             with open(self.key_path, "wb") as file:
                 file.write(self.key)
@@ -71,3 +71,4 @@ if __name__ == "__main__":
     enc = Encryptor()
     enc.encrypt()
     # enc.save_config()
+
