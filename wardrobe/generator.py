@@ -124,22 +124,22 @@ class WardrobeGenerator():
             # Choose shirt type based on forecasted temperature.
             shirt_type = self.check_temp_range(temp=self.parsed_fc[day]["feelsLike"], shirts=self.temp_rules["shirt"])
             # Score the day for it's priority and add to dictionary.
-            self.priority[day] = self.day_score(temp_score=self.temp_score(
+            self.priority[day] = [self.day_score(temp_score=self.temp_score(
                 shirt_type=shirt_type, feels_like=self.parsed_fc[day]["feelsLike"]), 
                 precip_score=self.precip_score(self.parsed_fc[day]["precip"])
-                )
+                ),
+                shirt_type]
         # Sort the priority dictionary.
         self.priority = dict(sorted(self.priority.items(), key=lambda item: item[1]))
-        self.build_days(shirt_type)
 
-    def build_days(self, shirt_type):
+    def build_days(self):
         """Choose the items for the given day."""
         for day in self.priority:
             if not isPTO(self.parsed_fc[day]["date"]):
                 boot_type = self.check_precip_range(precip=self.parsed_fc[day]["precip"], boots=self.precip_rules["boots"])
                 boot_color = self.choose_boots(boot_type).split()[0]
                 chino_inv = self.inventory["rules"]["boots"][boot_color]
-                shirt = self.choose_chinos(boots=boot_color, chinos=chino_inv, shirt=shirt_type, day=day)
+                shirt = self.choose_chinos(boots=boot_color, chinos=chino_inv, shirt=self.priority[day][1], day=day)
                 shirt_choice = self.choose_shirt(shirt, day)
                 self.remove_shirt(shirt_type=shirt, shirt_choice=shirt_choice)
             else:
@@ -375,6 +375,7 @@ class WardrobeGenerator():
             if self.today == "Sunday":
                 self.get_template()
                 self.prioritize_days()
+                self.build_days()
                 self.save_schedule()
             else:
                 if self.load_schedule():
@@ -405,8 +406,9 @@ class WardrobeGenerator():
         # --- #
         self.get_template()
         self.prioritize_days()
+        self.build_days()
         self.save_schedule()
-        self.preview_update()
+        # self.preview_update()
         
 
 if __name__ == "__main__":
