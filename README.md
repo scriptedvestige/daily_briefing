@@ -12,6 +12,8 @@ This project only uses three packages that are not built in, see requirements.tx
 
 To install the packages, activate your venv at the root directory of the project, then use the command "pip -r install requirements.txt".
 
+This version of the project has been sanitized for obvious reasons, you'll need to do some configuration if you'd like to run this yourself.
+
 There is still some polishing to be done, that will come in time. (Error handling, logging, whatever else comes to mind down the road.)
 
 [Configurations](#configurations) |
