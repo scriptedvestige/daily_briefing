@@ -79,22 +79,22 @@ This module operates almost exactly like the news module, but uses the NIST CVE 
 ### Encryption Module:
 Any config files that contain sensitive information should be encrypted.  For this project, that includes the smtp config as that json file contains credentials to authenticate for sending the emails.
 
-The cryptography package uses symmetrical encryption, so you use the same key for encryption and decryption.  You can keep the key whereever you like, just modify the appropriate variable with the path you'd like.
+The cryptography package uses symmetrical encryption.  You can keep the key whereever you like, just modify the appropriate variable with the path you'd like.
 
 Prior to the first run, you should create a key and encrypt at least the smtp config.  The email module will import the encryption module and decrypt the smtp config file and store the config elements as variables in RAM.
 
-The module will check that the key exists.  If the key does not exist, it will make a new key, then load the key.  If the key does exist, no new key is made and the key is loaded.  The smtp config file will be decrypted, the emailer module will be run, then the smtp config file will be re-encrypted before the scipt exits.
+The module will check that the key exists.  If the key does not exist, it will make a new key, then load the key.  If the key does exist, no new key is made and the key is loaded.  The smtp config file will be decrypted, but not overwritten.  The decrypted data is saved to variables, which are cleared after the email is sent.
 
 ---
 
 ### Email Module:
-The orchestrator feeds all data returned by the other modules to the email module.  The email module selects the appropriate HTML template/s given day and time.  The template is stored as a variable and the data fed into the module is injected.  The rendered template is saved as an HTML file at path daily_briefing/alerts/sent_templates.
+The orchestrator feeds all data returned by the other modules as HTML strings to the email module.  The email module selects the appropriate HTML template/s given day and time.  The template is stored as a variable and the data fed into the module is injected.  The rendered template is saved as an HTML file at path daily_briefing/alerts/sent_templates.
 
 The module will then import the encryption module, decrypt the smtp config file and save the creds and settings as variables in RAM.
 
 The email is sent over a TLS connection via the provider of your choice.  You'll need to look up the server for your provider.  Port will likely be 587, but double check that.  You will need to store your credentials for authentication to your provider in the smtp config file.  Make sure you encrypt this file!!!!!  If you have MFA enabled on your email login (which you should), you'll need to generate an application password to be used so the MFA doesn't cause issues.  The only part of this connection that is not encrypted is the initial handshake.
 
-Once the email is sent, the module will use the del command on the variables that hold the smtp config data, then call garbage collector to clear that data from RAM.
+Once the email is sent, the module will set the variables that hold the smtp config data to None, then call garbage collector to clear that data from RAM.
 
 ---
 
