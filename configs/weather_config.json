@@ -1,0 +1,6 @@
+{
+    "nws": {
+        "url": "https://api.weather.gov/gridpoints/[INSERT YOUR DETAILS HERE]",
+        "user-agent": {"User-Agent": "WeatherBot (your@email.here)"}
+    }
+}

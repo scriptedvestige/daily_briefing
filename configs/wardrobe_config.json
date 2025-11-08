@@ -1,0 +1,31 @@
+{
+    "rules": {
+        "temp": {
+            "range": [[0, 45], [46, 55], [56, 70], [71, 120]],
+            "shirt": ["Shirt type index correlates to range index"]
+        },
+        "precip": {
+            "range": [[0, 30], [31, 100]],
+            "boots": ["Boot type index correletes to range index"]
+        },
+        "boots": {
+            "boot1": ["Acceptable pant colors for boot type"],
+            "boot2": ["Acceptable pant colors for boot type"],
+            "boot3": ["Acceptable pant colors for boot type"]
+        },
+        "chinos": {
+            "chino1": ["Acceptable shirt colors for pant color"],
+            "chino2": ["Acceptable shirt colors for pant color"],
+            "chino3": ["Acceptable shirt colors for pant color"],
+            "chino4": ["Acceptable shirt colors for pant color"],
+            "chino5": ["Acceptable shirt colors for pant color"],
+            "chino6": ["Acceptable shirt colors for pant color"],
+            "chino7": ["Acceptable shirt colors for pant color"]
+        }
+    },
+    "boot2": ["Boot colors"],
+    "chinos": ["chino color inventory"],
+    "shirt1": ["shirt1 color inventory"],
+    "shirt2": ["shirt2 color inventory"],
+    "shirt3": ["shirt3 color inventory"]
+}

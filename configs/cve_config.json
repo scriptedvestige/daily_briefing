@@ -1,0 +1,6 @@
+{
+    "type": "cve",
+    "url": "https://services.nvd.nist.gov/rest/json/cves/2.0?",
+    "endpoints": ["kev", "pub", "lastMod"],
+    "keywords": ["Insert", "your", "keywords", "here"]
+}
