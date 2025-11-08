@@ -286,7 +286,7 @@ class WardrobeGenerator():
         # Get shirt type based on new temperature.
         shirt_type = self.check_temp_range(temp=new_temp, shirts=self.temp_rules["shirt"])
         # Check to ensure inventory greater than 0 for shirt type.
-        if self.inventory[shirt_type] == 0:
+        if len(self.inventory[shirt_type]) == 0:
             pass
         # If shirt type is list ["jacket", "flannel"], select flannel.
         if type(shirt_type) == list:
