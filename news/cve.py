@@ -135,7 +135,7 @@ class CveScraper():
                 desc = item["Description"]
                 self.cves_out += f"<a href='https://nvd.nist.gov/vuln/detail/{id}' target='_blank'>{id}</a><br>Severity: {sev} / {score}<br>{desc}<br><br>"
         else:
-            self.cves_out = "No new CVEs."
+            self.cves_out = "It's quiet...too quiet..."
         return self.cves_out
 
     def run(self):

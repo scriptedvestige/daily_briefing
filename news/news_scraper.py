@@ -124,7 +124,7 @@ class NewsScaper():
                 desc = item["description"]
                 self.articles_out += f"<b>{title}</b><br>{desc}<br><a href='{link}' target='_blank'>{link}</a><br><br>"
         else:
-            self.articles_out = "No new articles."
+            self.articles_out = "Take a moment to breathe!"
         return self.articles_out
 
     def run(self):
