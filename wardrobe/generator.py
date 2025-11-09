@@ -19,7 +19,6 @@ class WardrobeGenerator():
         self.workdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
         self.today = day_name()
         self.curr_date = iso_format()
-        self.week_dates = []
         # Schedule
         self.schedule_template = wardrobe_template()
         self.save_schedule_path = weekly_wardrobe(filename_format())
@@ -415,3 +414,4 @@ if __name__ == "__main__":
     ### Testing ####
     gen = WardrobeGenerator()
     gen.manual_run()
+
