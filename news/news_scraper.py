@@ -124,7 +124,7 @@ class NewsScaper():
                 desc = item["description"]
                 self.articles_out += f"<b>{title}</b><br>{desc}<br><a href='{link}' target='_blank'>{link}</a><br><br>"
         else:
-            self.articles_out = "Take a moment to breathe!"
+            self.articles_out = "Take a moment to breathe!<br><br>"
         return self.articles_out
 
     def run(self):
@@ -140,3 +140,4 @@ class NewsScaper():
 if __name__ == "__main__":
     scraper = NewsScaper()
     scraper.run()
+
