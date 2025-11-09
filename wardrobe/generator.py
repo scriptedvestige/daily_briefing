@@ -52,8 +52,12 @@ class WardrobeGenerator():
 
     def load_forecast(self):
         """Load the forecast json."""
-        with open(self.forecast_path, "r") as forecast:
-            self.weekly_fc = json.load(forecast)
+        if check_file(self.forecast_path):
+            with open(self.forecast_path, "r") as forecast:
+                self.weekly_fc = json.load(forecast)
+            return True
+        else:
+            return False
 
     def parse_forecast(self):
         """Parse the forecast json."""
@@ -168,7 +172,10 @@ class WardrobeGenerator():
         self.schedule[day]["boots"] = boots
         self.schedule[day]["chinos"] = chinos
         self.choose_belt(boots, day)
-        return shirt_type
+        if isinstance(shirt_type, list):
+            return shirt_type[0]
+        else:
+            return shirt_type
     
     def adjust_options(self, boot):
         """Use adjusted inventory to account for button down rules."""
@@ -368,18 +375,20 @@ class WardrobeGenerator():
         # Only run the module for the morning briefing.
         if time_of_day() == "morning":
             self.load_config()
-            self.load_forecast()
-            self.parse_forecast()
-            # If Sunday, build the weekly schedule.
-            if self.today == "Sunday":
-                self.get_template()
-                self.prioritize_days()
-                self.build_days()
-                self.save_schedule()
+            if self.load_forecast():
+                self.parse_forecast()
+                # If Sunday, build the weekly schedule.
+                if self.today == "Sunday":
+                    self.get_template()
+                    self.prioritize_days()
+                    self.build_days()
+                    self.save_schedule()
+                else:
+                    if self.load_schedule():
+                        self.update_inventory()
+                return self.daily_fit()
             else:
-                if self.load_schedule():
-                    self.update_inventory()
-            return self.daily_fit()
+                return "Forecast does not exist."
         # Skip running the module and return none because midday briefing doesn't include wardrobe.
         else:
             return None
@@ -400,18 +409,17 @@ class WardrobeGenerator():
     def manual_run(self):
         """Testing ground."""
         self.load_config()
-        self.load_forecast()
-        self.parse_forecast()
-        # --- #
-        self.get_template()
-        self.prioritize_days()
-        self.build_days()
-        self.save_schedule()
-        # self.preview_update()
+        if self.load_forecast():
+            self.parse_forecast()
+            # --- #
+            self.get_template()
+            self.prioritize_days()
+            self.build_days()
+            self.save_schedule()
+            # self.preview_update()
         
 
 if __name__ == "__main__":
     ### Testing ####
     gen = WardrobeGenerator()
-    gen.manual_run()
-
+    print(gen.run())
