@@ -8,6 +8,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from alerts.encryption import Encryptor
 import smtplib, ssl
+import time
 import gc
 
 
@@ -55,10 +56,15 @@ class Emailer:
     
     def inject_data(self, template, filepath):
         """Inject the data into the template."""
+        wardrobe = ""
+        if "preview" not in filepath:
+            wardrobe = "Check the weekly wardrobe preview!"
+        else:
+            wardrobe = self.wardrobe
         return template.format(
                 date = briefing_message_date(),
                 forecast = self.forecast,
-                wardrobe = self.wardrobe,
+                wardrobe = wardrobe,
                 news = self.news,
                 cves = self.cves,
                 timestamp = self.timestamp
@@ -87,7 +93,6 @@ class Emailer:
             server.ehlo()
             server.login(self.sender, self.auth)
             server.sendmail(self.sender, self.receiver, message.as_string())
-            server.quit()
 
     def clean_vars(self):
         """Clear RAM of variables with sensitive data."""
@@ -106,7 +111,6 @@ class Emailer:
         self.save_sent_email(filepath=self.briefing_send, email=email)
         brief_title = f"{self.time_of_day.title()} Briefing {self.file_date}"
         self.send_email(email=email, title=brief_title)
-        self.clean_vars()
         # Send the weekly preview also if it is Sunday morning.
         if self.today == "Sunday" and self.time_of_day == "morning":
             preview_template = self.select_template(self.preview_template)
