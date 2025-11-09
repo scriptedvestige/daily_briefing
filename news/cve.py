@@ -39,17 +39,17 @@ class CveScraper():
         """Load previously sent CVEs."""
         data = {}
         filename = f"cve_check_{date}.json"
-        filepath = os.path.join(self.output_dir, filename)
-        if check_file(filepath) and date == self.file_date and time_of_day() == "midday" and len(data["morning"].values()) > 0:
-            for key, value in data["morning"].items():
-                self.cves["morning"][key] = value
+        filepath = os.path.join(news_out(), filename)
         if check_file(filepath):
             with open(filepath, "r") as file:
                 data = json.load(file)
-            self.prev_output(data)
+            self.prev_output(data, date)
     
-    def prev_output(self, data):
+    def prev_output(self, data, date):
         """Build the output variable with data loaded from files or pulled from the API endpoints."""
+        if date == self.file_date and time_of_day() == "midday" and len(data["morning"].values()) > 0:
+            for key, value in data["morning"].items():
+                self.cves["morning"][key] = value
         for item in data.keys():
             if len(item) > 0:
                 for entry in data[item].keys():
@@ -156,4 +156,3 @@ class CveScraper():
 if __name__ == "__main__":
     cve = CveScraper()
     cve.run()
-
