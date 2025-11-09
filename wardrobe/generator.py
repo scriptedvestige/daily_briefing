@@ -197,7 +197,7 @@ class WardrobeGenerator():
 
     def choose_belt(self, boots, day):
         """Choose the appropriate belt for the day."""
-        if boots == "canyon captains" or boots == "danner":
+        if boots == "canyon" or boots == "danner":
             self.schedule[day]["belt"] = "canyon"
         else:
             self.schedule[day]["belt"] = "black"
@@ -423,3 +423,4 @@ if __name__ == "__main__":
     ### Testing ####
     gen = WardrobeGenerator()
     print(gen.run())
+
