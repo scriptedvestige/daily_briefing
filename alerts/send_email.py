@@ -8,7 +8,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from alerts.encryption import Encryptor
 import smtplib, ssl
-import time
 import gc
 
 
@@ -58,7 +57,7 @@ class Emailer:
         """Inject the data into the template."""
         wardrobe = ""
         if "preview" not in filepath:
-            wardrobe = "Check the weekly wardrobe preview!"
+            wardrobe = "Check the weekly wardrobe preview!<br><br>"
         else:
             wardrobe = self.wardrobe
         return template.format(
