@@ -56,7 +56,7 @@ class Emailer:
     def inject_data(self, template, filepath):
         """Inject the data into the template."""
         wardrobe = ""
-        if "preview" not in filepath:
+        if "preview" not in filepath and self.today == "Sunday":
             wardrobe = "Check the weekly wardrobe preview!<br><br>"
         else:
             wardrobe = self.wardrobe
@@ -117,7 +117,7 @@ class Emailer:
             self.save_sent_email(filepath=self.preview_send, email=preview_email)
             preview_title = f"Weekly Wardrobe Preview {self.file_date}"
             self.send_email(email=preview_email, title=preview_title)
-            self.clean_vars()
+        self.clean_vars()
 
     def run_update(self, type):
         """Run the module for a test."""
