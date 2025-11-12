@@ -1,42 +1,83 @@
 #!/usr/bin/env python3
+import traceback
+from datetime import datetime
+from functools import wraps
 
+from utils.file_utils import root_dir, build_path
 from weather import nws
 from wardrobe import generator
 from news import news_scraper, cve
 from alerts import send_email
 from cleaner import CleanUp
 
-# Data
-forecast = ""
-wardrobe = ""
-cyber_news = ""
-cves = ""
+LOG_PATH = build_path(root_dir(), "cron.log")
 
-def beep_boop():
-    """I am become cron, runner of modules."""
-    # Run forecast module.
+# ----- DECORATOR ----- #
+def safe_run(module_name):
+    """Decorator that runs a function safely and logs any exceptions."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                with open(LOG_PATH, "a") as log:
+                    log.write(f"\n[{datetime.now()}] Error in {module_name}:\n")
+                    log.write(f"{e}\n")
+                    log.write(traceback.format_exc())
+                    log.write("\n" + "-"*60 + "\n")
+                    return f"{module_name} failed - check cron.log<br><br>"
+        return wrapper
+    return decorator
+
+# ----- MODULE RUNNERS ----- #
+@safe_run("WeatherForecast")
+def run_forecast():
     fc = nws.WeatherForecast()
-    forecast = fc.run()
-    # Run wardrobe module.
+    return fc.run()
+
+@safe_run("WardrobeGenerator")
+def run_wardrobe():
     gen = generator.WardrobeGenerator()
-    wardrobe = gen.run()
-    # Run news module.
+    return gen.run()
+
+@safe_run("NewsScraper")
+def run_news():
     cyber = news_scraper.NewsScaper()
-    cyber_news = cyber.run()
-    # Run CVE module.
+    return cyber.run()
+
+@safe_run("CveScraper")
+def run_cves():
     vulns = cve.CveScraper()
-    cves = vulns.run()
-    # Send all the data.
+    return vulns.run()
+
+@safe_run("Emailer")
+def run_email(forecast, wardrobe, cyber_news, cves):
     email = send_email.Emailer(
         forecast=forecast, 
         wardrobe=wardrobe, 
         news=cyber_news, 
         cves=cves
         )
-    email.run()
-    # Clean up old files.
+    return email.run()
+
+@safe_run("CleanUp")
+def run_cleaner():
     janitor = CleanUp()
-    janitor.run()
+    return janitor.run()
+
+# ----- MAIN ORCHESTRATION ----- # 
+def beep_boop():
+    """I am become cron, runner of modules."""
+    # Gather data for email.
+    forecast = run_forecast()
+    wardrobe = run_wardrobe()
+    cyber_news = run_news()
+    cves = run_cves()
+    # Send email.
+    run_email(forecast, wardrobe, cyber_news, cves)
+    # Clean up old files.
+    run_cleaner()
 
 if __name__ == "__main__":
     beep_boop()
