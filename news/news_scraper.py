@@ -64,23 +64,19 @@ class NewsScaper():
     def scrape(self, time):
         """Run the scraper, return raw data."""
         for site in self.urls:
-            data = feedparser.parse(site)
+            data = feedparser.parse(site).entries
             self.parse_data(time, data)
 
     def parse_data(self, time, all_data):
         """Parse the data pulled by the scraper."""
-        for i in range(len(all_data["entries"])):
-            item = all_data["entries"][i]
-            parsed = self.get_item(item)
+        for entry in all_data:
+            published = entry.get("published") or entry.get("updated") or entry.get("pubDate")
+            description = entry.get("description") or entry.get("summary")
+            item = [entry.title, published[5:16], entry.link, description]
             # If data is in relevent date range, contains keywords, and has not been sent in a briefing already.
-            if self.check_date(parsed) and self.check_keywords(parsed) and self.check_repeat(parsed[0]):
-                self.add_article(time=time, index=str(self.counter), item=parsed)
+            if self.check_date(item) and self.check_keywords(item) and self.check_repeat(item[0]):
+                self.add_article(time=time, index=str(self.counter), item=item)
                 self.counter += 1
-
-    def get_item(self, data):
-        """Get the title, published date, link, and description for an item in the raw data."""
-        item = [data["title"], data["published"][5:16], data["link"], data["description"]]
-        return item
 
     def check_date(self, item):
         """Check that published date matches yesterday or today."""
@@ -140,4 +136,3 @@ class NewsScaper():
 if __name__ == "__main__":
     scraper = NewsScaper()
     scraper.run()
-
