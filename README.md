@@ -14,7 +14,9 @@ To install the packages, activate your venv at the root directory of the project
 
 This version of the project has been sanitized for obvious reasons, you'll need to do some configuration if you'd like to run this yourself.
 
-There is still some polishing to be done, that will come in time. (Error handling, logging, whatever else comes to mind down the road.)
+Error handling and logging of errors is handled by the decorator function in the run_briefing.py orchestrator.
+
+There is still some polishing to be done, that will come in time.
 
 [Configurations](#configurations) |
 [Templates](#templates) |
@@ -46,7 +48,7 @@ These modules live at daily_briefing/utils.  TimeUtils contains functions that p
 ---
 
 ### Weather Module:
-The weather module scrapes an NWS API endpoint and saves the weekly forecast data as a json at path daily_briefing/weather/output.  This data is formatted as a string containing HTML tags and returned to the corresponding variable in the orchestrator.
+The weather module scrapes an NWS API endpoint and saves the weekly forecast data as a json at path daily_briefing/weather/forecast_data.  This data is formatted as a string containing HTML tags and returned to the corresponding variable in the orchestrator.
 
 ##### API URL
 1. Calling the "/points/{latitude},{longitude}" endpoint gives you the parameters to plug into the gridpoints endpoint. 
