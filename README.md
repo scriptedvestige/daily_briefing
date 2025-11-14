@@ -48,7 +48,7 @@ These modules live at daily_briefing/utils.  TimeUtils contains functions that p
 ---
 
 ### Weather Module:
-The weather module scrapes an NWS API endpoint and saves the weekly forecast data as a json at path daily_briefing/weather/forecast_data.  This data is formatted as a string containing HTML tags and returned to the corresponding variable in the orchestrator.
+The weather module scrapes an NWS API endpoint and saves the weekly forecast data as a json at path daily_briefing/weather/output.  This data is formatted as a string containing HTML tags and returned to the corresponding variable in the orchestrator.
 
 ##### API URL
 1. Calling the "/points/{latitude},{longitude}" endpoint gives you the parameters to plug into the gridpoints endpoint. 
@@ -107,6 +107,7 @@ Every Saturday morning this module will delete all files older than the current 
   - daily_briefing/alerts/output (Sent email HTML files)
   - daily_briefing/news/output (News and CVE JSON files)
   - daily_briefing/wardrobe/output (Weekly wardrobe schedule JSON files)
+  - daily_briefing/weather/output (Weather forecast JSON files)
 
 ---
 
