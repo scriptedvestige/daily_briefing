@@ -2,7 +2,7 @@
 import sys
 sys.path.append('.')
 
-from utils.time_utils import day_name, time_of_day, filename_format, filename_delta, future_dayname, current_date_time, isPTO, iso_format
+from utils.time_utils import day_name, time_of_day, filename_format, filename_delta, future_dayname, isPTO, iso_format
 from utils.file_utils import wardrobe_template, weekly_wardrobe, last_weekly_wardrobe, todays_forecast, check_file, config_path
 import json
 import random
@@ -213,7 +213,7 @@ class WardrobeGenerator():
         else:
             self.schedule[day]["jacket"] = "No"
         if shirt_type == "button_down" and len(self.inventory[shirt_type]) == 0:
-            shirt == "flannel"
+            shirt = "flannel"
         else:
             shirt = shirt_type
         chino_color = self.schedule[day]["chinos"]
@@ -222,12 +222,9 @@ class WardrobeGenerator():
         # Make list of available shirts to choose from based on type and color picked.
         # Navy/black and olive/black button downs acceptable with black chinos.  Otherwise, black shirt not allowed with black chinos.
         if shirt == "button_down" and chino_color == "black":
-            adjusted_rules = chino_rules.copy()
-            adjusted_rules.append("black")
-        else:
-            adjusted_rules = chino_rules.copy()
+            chino_rules.append("black")
         # Make a list of shirt options based on shirt type and acceptable colors per pant color.
-        shirt_options = [x for x in self.inventory[shirt] if all(part in adjusted_rules for part in x.split("/"))]
+        shirt_options = [x for x in self.inventory[shirt] if x.split("/")[0] in chino_rules]
         if len(shirt_options) > 0:
             shirt_choice = random.choice(shirt_options)
         else:
@@ -277,10 +274,10 @@ class WardrobeGenerator():
         # Get shirt based on new temp.
         shirt_type = self.check_temp_range(temp=new_temp, shirts=self.temp_rules["shirt"])
         # If new boot different than scheduled boot, choose different boots, chinos, and belt for current day.
-        if self.schedule[self.today]["boots"].split()[-1] != boot_type:
+        if self.schedule[self.today]["boots"] != boot_type:
             boot_color = self.choose_boots(boot_type)
             self.schedule[self.today]["boots"] = boot_color
-            chinos = self.inventory["rules"]["boots"][boot_color.split()[0]]
+            chinos = self.inventory["rules"]["boots"][boot_color]
             if self.schedule[self.today]["chinos"] not in chinos:
                 self.choose_chinos(boots=boot_color, chinos=chinos, shirt=shirt_type, day=self.today)
             self.choose_belt(boots=boot_color, day=self.today)
@@ -309,7 +306,7 @@ class WardrobeGenerator():
         used_inventory = {}
         # Create a list of all items used in schedule.
         for key, value in self.schedule.items():
-            if self.today != key and key != "Saturday" and key != "Sunday" and value is dict:
+            if self.today != key and key != "Saturday" and key != "Sunday" and isinstance(value, dict):
                 used_inventory[key] = value
         # Remove items used on other days from current inventory.
         for value in used_inventory.values():
@@ -412,15 +409,24 @@ class WardrobeGenerator():
         if self.load_forecast():
             self.parse_forecast()
             # --- #
-            self.get_template()
-            self.prioritize_days()
-            self.build_days()
-            self.save_schedule()
-            # self.preview_update()
-        
+            if self.load_schedule():
+                self.update_inventory()
+            return self.daily_fit()
+    
+    def rebuild_schedule(self):
+        """Rebuild the schedule with new items."""
+        self.load_config()
+        if self.load_forecast():
+            self.parse_forecast()
+        self.get_template()
+        self.prioritize_days()
+        self.build_days()
+        self.save_schedule()
+        self.preview_update()
 
 if __name__ == "__main__":
     ### Testing ####
     gen = WardrobeGenerator()
-    print(gen.run())
-
+    # gen.run()
+    # print(gen.manual_run())
+    gen.rebuild_schedule()
