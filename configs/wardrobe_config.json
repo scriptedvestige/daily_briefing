@@ -1,7 +1,7 @@
 {
     "rules": {
         "temp": {
-            "range": [[0, 45], [46, 55], [56, 70], [71, 120]],
+            "range": [[0, 55], [56, 70], [71, 120]],
             "shirt": ["Shirt type index correlates to range index"]
         },
         "precip": {
@@ -29,3 +29,4 @@
     "shirt2": ["shirt2 color inventory"],
     "shirt3": ["shirt3 color inventory"]
 }
+
