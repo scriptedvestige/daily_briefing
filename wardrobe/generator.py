@@ -133,7 +133,7 @@ class WardrobeGenerator():
                 ),
                 shirt_type]
         # Sort the priority dictionary.
-        self.priority = dict(sorted(self.priority.items(), key=lambda item: item[1]))
+        self.priority = dict(sorted(self.priority.items(), key=lambda item: item[1][0]))
 
     def build_days(self):
         """Choose the items for the given day."""
@@ -145,6 +145,7 @@ class WardrobeGenerator():
                 shirt = self.choose_chinos(boots=boot_color, chinos=chino_inv, shirt=self.priority[day][1], day=day)
                 shirt_choice = self.choose_shirt(shirt, day)
                 self.remove_shirt(shirt_type=shirt, shirt_choice=shirt_choice)
+                self.need_jacket(day)
             else:
                 self.schedule[day] = "No work today!"
 
@@ -172,10 +173,7 @@ class WardrobeGenerator():
         self.schedule[day]["boots"] = boots
         self.schedule[day]["chinos"] = chinos
         self.choose_belt(boots, day)
-        if isinstance(shirt_type, list):
-            return shirt_type[0]
-        else:
-            return shirt_type
+        return shirt_type
     
     def adjust_options(self, boot):
         """Use adjusted inventory to account for button down rules."""
@@ -205,13 +203,6 @@ class WardrobeGenerator():
     def choose_shirt(self, shirt_type, day):
         """Choose a shirt color based on chino color."""
         shirt = ""
-        if type(shirt_type) == list:
-            shirt = shirt_type[1]
-            self.schedule[day]["jacket"] = "Yes"
-        elif self.parsed_fc[day]["precip"] >= 31:
-            self.schedule[day]["jacket"] = "Yes"
-        else:
-            self.schedule[day]["jacket"] = "No"
         if shirt_type == "button_down" and len(self.inventory[shirt_type]) == 0:
             shirt = "flannel"
         else:
@@ -231,6 +222,15 @@ class WardrobeGenerator():
             shirt_choice = self.retry_choices(chino_color, shirt, day)
         self.schedule[day]["shirt"] = f"{shirt_choice} {shirt}"
         return shirt_choice
+    
+    def need_jacket(self, day):
+        """Determine whether jacket is necessary."""
+        if self.parsed_fc[day]["precip"] >= 31:
+            self.schedule[day]["jacket"] = "yes"
+        elif self.parsed_fc[day]["feelsLike"] <= 50:
+            self.schedule[day]["jacket"] = "no"
+        else:
+            self.schedule[day]["jacket"] = "no"
 
     def remove_shirt(self, shirt_type, shirt_choice):
         """Remove chosen shirt from inventory."""
@@ -334,6 +334,7 @@ class WardrobeGenerator():
             chinos = self.schedule[self.today]["chinos"].title()
             belt = self.schedule[self.today]["belt"].title()
             self.double_check_shirt()
+            self.need_jacket(self.today)
             # If shirt type is button_down, reformat to Button Down
             if "button_down" in self.schedule[self.today]["shirt"]:
                 shirt = (self.schedule[self.today]["shirt"].split()[0] + " " + self.schedule[self.today]["shirt"].split()[1].replace("_", " ")).title()
@@ -418,15 +419,17 @@ class WardrobeGenerator():
         self.load_config()
         if self.load_forecast():
             self.parse_forecast()
-        self.get_template()
-        self.prioritize_days()
-        self.build_days()
-        self.save_schedule()
-        self.preview_update()
+            self.get_template()
+            self.prioritize_days()
+            self.build_days()
+            self.save_schedule()
+            self.preview_update()
+        else:
+            print("Error loading forecast.  Check forecast file exists.")
 
 if __name__ == "__main__":
     ### Testing ####
     gen = WardrobeGenerator()
     # gen.run()
     # print(gen.manual_run())
-    gen.rebuild_schedule()
+    # gen.rebuild_schedule()
