@@ -31,22 +31,22 @@ def safe_run(module_name):
     return decorator
 
 # ----- MODULE RUNNERS ----- #
-@safe_run("WeatherForecast")
+@safe_run("Weather Forecast")
 def run_forecast():
     fc = nws.WeatherForecast()
     return fc.run()
 
-@safe_run("WardrobeGenerator")
+@safe_run("Wardrobe Generator")
 def run_wardrobe():
     gen = generator.WardrobeGenerator()
     return gen.run()
 
-@safe_run("NewsScraper")
+@safe_run("News Scraper")
 def run_news():
     cyber = news_scraper.NewsScaper()
     return cyber.run()
 
-@safe_run("CveScraper")
+@safe_run("CVE Scraper")
 def run_cves():
     vulns = cve.CveScraper()
     return vulns.run()
@@ -61,7 +61,7 @@ def run_email(forecast, wardrobe, cyber_news, cves):
         )
     return email.run()
 
-@safe_run("CleanUp")
+@safe_run("Janitor")
 def run_cleaner():
     janitor = CleanUp()
     return janitor.run()
