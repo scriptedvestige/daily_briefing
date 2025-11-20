@@ -225,10 +225,10 @@ class WardrobeGenerator():
     
     def need_jacket(self, day):
         """Determine whether jacket is necessary."""
-        if self.parsed_fc[day]["precip"] >= 31:
+        if self.parsed_fc[day]["precip"] >= 30:
             self.schedule[day]["jacket"] = "yes"
-        elif self.parsed_fc[day]["feelsLike"] <= 50:
-            self.schedule[day]["jacket"] = "no"
+        elif self.parsed_fc[day]["feelsLike"] <= 55:
+            self.schedule[day]["jacket"] = "yes"
         else:
             self.schedule[day]["jacket"] = "no"
 
