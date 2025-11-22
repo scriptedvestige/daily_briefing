@@ -70,7 +70,7 @@ class CveScraper():
         r = requests.get(self.url, params)
         return r.json()
     
-    def parse_data(self, data):
+    def parse_data(self, data, endpoint):
         """Parse the data returned by the API call."""
         vulns = []
         if data["totalResults"] > 0:
@@ -88,7 +88,12 @@ class CveScraper():
                     cvss_score = cve_metrics[cvss_key][0]["cvssData"]["baseScore"]
                     # If severity is high or critical.
                     if cvss_sev == "HIGH" or cvss_sev == "CRITICAL":
-                        self.cves[self.time_of_day][cve_id] = {"Description": cve_desc, "Severity": cvss_sev, "Score": cvss_score}
+                        self.cves[self.time_of_day][cve_id] = {
+                            "endpoint": endpoint, 
+                            "description": cve_desc, 
+                            "severity": cvss_sev, 
+                            "score": cvss_score
+                            }
 
     def check_keywords(self, desc, source):
         """Check if keywords are present in description."""
@@ -115,7 +120,7 @@ class CveScraper():
     def sort_cvss(self):
         """Sort the CVE dictionary so that highest scores are listed first."""
         selected = self.cves.get(self.time_of_day, {})
-        sorted_cves = dict(sorted(selected.items(), key=lambda item: item[1]["Score"], reverse=True))
+        sorted_cves = dict(sorted(selected.items(), key=lambda item: item[1]["score"], reverse=True))
         self.cves[self.time_of_day] = sorted_cves
 
     def save_output(self):
@@ -130,10 +135,16 @@ class CveScraper():
         if len(self.cves[time]) > 0:
             for key, item in self.cves[time].items():
                 id = key
-                sev = item["Severity"]
-                score = item["Score"]
-                desc = item["Description"]
-                self.cves_out += f"<a href='https://nvd.nist.gov/vuln/detail/{id}' target='_blank'>{id}</a><br>Severity: {sev} / {score}<br>{desc}<br><br>"
+                sev = item["severity"]
+                score = item["score"]
+                desc = item["description"]
+                if item["endpoint"] == "kev":
+                    status = "Exploited in the Wild"
+                elif item["endpoint"] == "pub":
+                    status = "Newly Discovered"
+                else:
+                    status = "Updated"
+                self.cves_out += f"<a href='https://nvd.nist.gov/vuln/detail/{id}' target='_blank'>{id}</a><br>Status: <b>{status}</b><br>Severity: {sev} / {score}<br>{desc}<br><br>"
         else:
             self.cves_out = "It's quiet...too quiet...<br><br>"
         return self.cves_out
@@ -147,7 +158,7 @@ class CveScraper():
         for entry in self.endpoints:
             params = self.set_parameters(entry)
             data = self.make_call(params)
-            self.parse_data(data)
+            self.parse_data(data, entry)
         self.sort_cvss()
         self.save_output()
         return self.format_data(self.time_of_day)
@@ -155,5 +166,12 @@ class CveScraper():
 
 if __name__ == "__main__":
     cve = CveScraper()
-    cve.run()
-
+    data = cve.run()
+    """ from alerts import send_email
+    emailer = send_email.Emailer(
+        forecast="Testing...", 
+        wardrobe="Test", 
+        news="Yeehaw!", 
+        cves=data
+    )
+    emailer.run() """ 
