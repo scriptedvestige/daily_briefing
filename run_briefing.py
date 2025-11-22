@@ -6,7 +6,7 @@ from functools import wraps
 from utils.file_utils import root_dir, build_path
 from weather import nws
 from wardrobe import generator
-from news import news_scraper, cve
+from news import rss, cve
 from alerts import send_email
 from cleaner import CleanUp
 
@@ -43,7 +43,7 @@ def run_wardrobe():
 
 @safe_run("News Scraper")
 def run_news():
-    cyber = news_scraper.NewsScaper()
+    cyber = rss.RssScraper()
     return cyber.run()
 
 @safe_run("CVE Scraper")
