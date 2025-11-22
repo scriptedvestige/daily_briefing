@@ -9,7 +9,7 @@ import json
 import os
 
 
-class NewsScaper():
+class RssScraper():
     """Scrape RSS feeds from news sources listed in config."""
     def __init__(self):
         # Counters
@@ -91,7 +91,7 @@ class NewsScaper():
             if word.lower() in item[0].lower():
                 return True
             else:
-                continue
+                return False
 
     def check_repeat(self, title):
         """Return false if article was already sent in a briefing for the current day or day prior."""
@@ -134,5 +134,5 @@ class NewsScaper():
 
 
 if __name__ == "__main__":
-    scraper = NewsScaper()
+    scraper = RssScraper()
     scraper.run()
