@@ -274,7 +274,7 @@ class WardrobeGenerator():
         # Get shirt based on new temp.
         shirt_type = self.check_temp_range(temp=new_temp, shirts=self.temp_rules["shirt"])
         # If new boot different than scheduled boot, choose different boots, chinos, and belt for current day.
-        if self.schedule[self.today]["boots"] != boot_type:
+        if boot_type == "danner" and self.schedule[self.today]["boots"] != "danner":
             boot_color = self.choose_boots(boot_type)
             self.schedule[self.today]["boots"] = boot_color
             chinos = self.inventory["rules"]["boots"][boot_color]
