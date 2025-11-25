@@ -97,11 +97,13 @@ class CveScraper():
 
     def check_keywords(self, desc, source):
         """Check if keywords are present in description."""
+        desc_l = desc.lower()
+        source_l = source.lower()
         for word in self.keywords:
-            if word.lower() in desc.lower() or word.lower() in source.lower():
+            w = word.lower()
+            if w in desc_l or w in source_l:
                 return True
-            else:
-                continue
+        return False
 
     def check_metrics(self, entry):
         """Check that the metrics section is a dictionary and is not empty."""
