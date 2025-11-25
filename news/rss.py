@@ -87,11 +87,11 @@ class RssScraper():
         
     def check_keywords(self, item):
         """Check title for relevent keywords."""
+        title = item[0].lower()
         for word in self.keywords:
-            if word.lower() in item[0].lower():
+            if word.lower() in title:
                 return True
-            else:
-                return False
+        return False
 
     def check_repeat(self, title):
         """Return false if article was already sent in a briefing for the current day or day prior."""
@@ -135,4 +135,4 @@ class RssScraper():
 
 if __name__ == "__main__":
     scraper = RssScraper()
-    scraper.run()
+    print(scraper.run())
