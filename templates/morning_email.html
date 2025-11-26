@@ -23,7 +23,7 @@
 
     <h2 style="text-align: center; color: #0A3A1A; margin: 10px 0 5px;">Weather</h2>
     
-    <div style="max-width: 500px; margin: 0 auto; padding: 0 10px; text-align: left;">
+    <div style="max-width: 500px; margin: 0 auto; padding: 0 10px; text-align: center;">
         <p style="color: #ffffff; line-height: 1.4;">{forecast}</p>
     </div>
 
@@ -33,7 +33,7 @@
 
     <h2 style="text-align: center; color: #0A3A1A; margin: 10px 0 5px;">Wardrobe</h2>
     
-    <div style="max-width: 500px; margin: 0 auto; padding: 0 10px; text-align: left;">
+    <div style="max-width: 500px; margin: 0 auto; padding: 0 10px; text-align: center;">
         <p style="color: #ffffff; line-height: 1.4;">{wardrobe}</p>
     </div>
 
@@ -43,7 +43,7 @@
 
     <h2 style="text-align: center; color: #0A3A1A; margin: 10px 0 5px;">News</h2>
     
-    <div style="max-width: 500px; margin: 0 auto; padding: 0 10px; text-align: left;">
+    <div style="max-width: 500px; margin: 0 auto; padding: 0 10px; text-align: center;">
         <p style="color: #ffffff; line-height: 1.4;">{news}</p>
     </div>
 
@@ -53,11 +53,17 @@
 
     <h2 style="text-align: center; color: #0A3A1A; margin: 10px 0 5px;">CVEs</h2>
 
-    <div style="max-width: 500px; margin: 0 auto; padding: 0 10px; text-align: left;">
+    <div style="max-width: 500px; margin: 0 auto; padding: 0 10px; text-align: center;">
         <p style="color: #ffffff; line-height: 1.4;">{cves}</p>
     </div>
 
-    <footer style="text-align: center; padding: 20px 0; color: #cccccc; font-size:0.9em;">{timestamp}</footer>
+    <footer style="text-align: center; padding: 20px 0; color: #cccccc; font-size:0.9em;">
+        <p>
+            {timestamp}
+            <br><br>
+            <a href="mailto:your@email.com" style="color: #cccccc; text-decoration: none;">Unsubscribe | Contact</a>
+        </p>
+    </footer>
 
 </body>
 
