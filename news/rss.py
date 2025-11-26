@@ -118,7 +118,7 @@ class RssScraper():
                 title = item["title"]
                 link = item["link"]
                 desc = item["description"]
-                self.articles_out += f"<b>{title}</b><br>{desc}<br><a href='{link}' target='_blank'>{link}</a><br><br>"
+                self.articles_out += f"<b><u>{title}</u></b><br>{desc}<br><a href='{link}' target='_blank'>{link}</a><br><br>"
         else:
             self.articles_out = "Take a moment to breathe!<br><br>"
         return self.articles_out
