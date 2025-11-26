@@ -42,7 +42,7 @@ Template files are stored at path daily_briefing/templates.  The emailer module 
 
 ---
 
-### TimeUtils & FileUtils
+### TimeUtils & FileUtils:
 These modules live at daily_briefing/utils.  TimeUtils contains functions that provide dates and times in various formats to be used by all modules.  FileUtils functions build file paths to be used in all modules.
 
 ---
@@ -92,7 +92,7 @@ The module will check that the key exists.  If the key does not exist, it will m
 ---
 
 ### Email Module:
-The orchestrator feeds all data returned by the other modules as HTML strings to the email module.  The email module selects the appropriate HTML template/s given day and time.  The template is stored as a variable and the data fed into the module is injected.  The rendered template is saved as an HTML file at path daily_briefing/alerts/sent_templates.
+The orchestrator feeds all data returned by the other modules as HTML strings to the email module.  The email module selects the appropriate HTML template/s given day and time.  The template is stored as a variable and the data fed into the module is injected.  The rendered template is saved as an HTML file at path daily_briefing/alerts/output.
 
 The module will then import the encryption module, decrypt the smtp config file and save the creds and settings as variables in RAM.
 
