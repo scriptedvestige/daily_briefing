@@ -17,7 +17,7 @@ class CveScraper():
         self.time_of_day = time_of_day()
         self.file_date = filename_format()
         self.file_yesterday = filename_delta(-1)
-        self.today_search = f"{iso_format()}T23:59:59.999"
+        self.today_search = f"{iso_format()}T23:59:59.999-08:00"
         self.yesterday_search = f"{iso_delta(-1)}T00:00:00.000"
         # Config
         self.url = ""
@@ -26,6 +26,7 @@ class CveScraper():
         self.prev_out = []
         self.cves = {"morning": {}, "midday": {}}
         self.cves_out = ""
+        self.keyword_hit = ""
     
     def load_config(self):
         """Load the config."""
@@ -82,14 +83,15 @@ class CveScraper():
             cve_desc = values["cve"]["descriptions"][0]["value"]
             cve_metrics = values["cve"]["metrics"]
             # Check whether keywords from config are present in description and CVE status is analyzed.
-            if self.check_keywords(desc=cve_desc, source=cve_source) and self.check_metrics(cve_metrics) and self.check_duplicate(cve_id) and cve_status == "Analyzed":
+            if self.check_keywords(desc=cve_desc, source=cve_source) and self.check_metrics(cve_metrics) and self.check_duplicate(cve_id) and self.check_status(cve_status):
                     cvss_key = next(iter(cve_metrics))
                     cvss_sev = cve_metrics[cvss_key][0]["cvssData"]["baseSeverity"]
                     cvss_score = cve_metrics[cvss_key][0]["cvssData"]["baseScore"]
                     # If severity is high or critical.
                     if cvss_sev == "HIGH" or cvss_sev == "CRITICAL":
                         self.cves[self.time_of_day][cve_id] = {
-                            "endpoint": endpoint, 
+                            "endpoint": endpoint,
+                            "keyword": self.keyword_hit.title(), 
                             "description": cve_desc, 
                             "severity": cvss_sev, 
                             "score": cvss_score
@@ -97,17 +99,26 @@ class CveScraper():
 
     def check_keywords(self, desc, source):
         """Check if keywords are present in description."""
+        self.keyword_hit = ""
         desc_l = desc.lower()
         source_l = source.lower()
         for word in self.keywords:
             w = word.lower()
             if w in desc_l or w in source_l:
+                self.keyword_hit = w
                 return True
         return False
 
     def check_metrics(self, entry):
         """Check that the metrics section is a dictionary and is not empty."""
         if isinstance(entry, dict) and len(entry) > 0:
+            return True
+        else:
+            return False
+        
+    def check_status(self, status):
+        """Check that the status of the entry is not received or rejected."""
+        if status == "Analyzed" or status == "Awaiting Analysis" or status == "Undergoing Analysis":
             return True
         else:
             return False
@@ -139,6 +150,7 @@ class CveScraper():
                 id = key
                 sev = item["severity"]
                 score = item["score"]
+                keyword = item["keyword"]
                 desc = item["description"]
                 if item["endpoint"] == "kev":
                     status = "Exploited in the Wild"
@@ -146,7 +158,7 @@ class CveScraper():
                     status = "Newly Discovered"
                 else:
                     status = "Updated"
-                self.cves_out += f"<a href='https://nvd.nist.gov/vuln/detail/{id}' target='_blank'>{id}</a><br>Status: <b>{status}</b><br>Severity: {sev} / {score}<br>{desc}<br><br>"
+                self.cves_out += f"<a href='https://nvd.nist.gov/vuln/detail/{id}' target='_blank'>{id}</a><br>Status: <b>{status}</b><br>Severity: {sev} / {score}<br>Keyword: {keyword}<br>{desc}<br><br>"
         else:
             self.cves_out = "It's quiet...too quiet...<br><br>"
         return self.cves_out
