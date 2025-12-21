@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils.time_utils import filename_format, day_name, time_of_day
+from utils.time_utils import filename_format, filename_delta, day_name, time_of_day
 from utils.file_utils import alerts_out, news_out, wardrobe_out, weather_out
 import os
 
@@ -20,6 +20,8 @@ class CleanUp():
         """Run the cleaner."""
         # Only run on Saturday morning.
         if self.today == "Saturday" and time_of_day() == "morning":
+            today_str = filename_format()
+            yesterday_str = filename_delta(-1)
             for dir in self.all_dirs:
                 # Grab all filenames in directory.
                 all_files = os.listdir(dir)
@@ -29,8 +31,8 @@ class CleanUp():
                     Doing it this way is simpler because the date is in the name so it requires no imports or time format conversions.
                     """
                     file_date = file.split("_")[-1][:-5]
-                    # If file date is older than current date, delete the file after ensuring it exists.
-                    if file_date != filename_format():
+                    # If file date is older than today or yesterday, delete the file after ensuring it exists.
+                    if file_date not in (today_str, yesterday_str):
                         full_path = os.path.join(dir, file)
                         if os.path.exists(full_path):
                             os.remove(full_path)
