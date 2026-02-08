@@ -6,7 +6,6 @@ from utils.time_utils import day_name, time_of_day, filename_format, filename_de
 from utils.file_utils import wardrobe_template, weekly_wardrobe, last_weekly_wardrobe, todays_forecast, check_file, config_path
 import json
 import random
-import sys
 
 
 class WardrobeGenerator():
@@ -449,3 +448,4 @@ if __name__ == "__main__":
         gen.preview_update()
     else:
         print("No argument passed.  Options: --rebuild or --preview.")
+
