@@ -6,6 +6,7 @@ from utils.time_utils import day_name, time_of_day, filename_format, filename_de
 from utils.file_utils import wardrobe_template, weekly_wardrobe, last_weekly_wardrobe, todays_forecast, check_file, config_path
 import json
 import random
+import sys
 
 
 class WardrobeGenerator():
@@ -151,8 +152,10 @@ class WardrobeGenerator():
 
     def choose_boots(self, boots):
         """Choose boots for a given day."""
-        if boots == "captain":
-            boots = random.choice(self.inventory["captain"])
+        if boots == "dry":
+            boots = random.choice(self.inventory["dry_boots"])
+        else:
+            boots = random.choice(self.inventory["wet_boots"])
         return boots
 
     def choose_chinos(self, boots, chinos, shirt, day):
@@ -172,7 +175,7 @@ class WardrobeGenerator():
         # Save boot color and chinos to schedule for the given day
         self.schedule[day]["boots"] = boots
         self.schedule[day]["chinos"] = chinos
-        self.choose_belt(boots, day)
+        self.choose_belt(boots, chinos, day)
         return shirt_type
     
     def adjust_options(self, boot):
@@ -193,10 +196,17 @@ class WardrobeGenerator():
             if chinos in self.inventory["rules"]["boots"][key]:
                 self.inventory["rules"]["boots"][key].remove(chinos)
 
-    def choose_belt(self, boots, day):
+    def choose_belt(self, boots, chinos, day):
         """Choose the appropriate belt for the day."""
-        if boots == "canyon" or boots == "danner":
+        if boots == "canyon_captain" or boots == "pecan_douglas":
             self.schedule[day]["belt"] = "canyon"
+        elif "charcoal" in boots:
+            if chinos == "black" or chinos == "grey":
+                self.schedule[day]["belt"] = "black"
+            elif chinos == "navy":
+                self.schedule[day]["belt"] = random.choice(["canyon", "black"])
+            else:
+                self.schedule[day]["belt"] = "canyon"
         else:
             self.schedule[day]["belt"] = "black"
 
@@ -330,14 +340,16 @@ class WardrobeGenerator():
             daily_fit = self.schedule[self.today]
         else:
             self.double_check_boots()
-            boots = self.schedule[self.today]["boots"].title()
+            boots = self.schedule[self.today]["boots"].replace("_", " ").title()
             chinos = self.schedule[self.today]["chinos"].title()
             belt = self.schedule[self.today]["belt"].title()
             self.double_check_shirt()
             self.need_jacket(self.today)
             # If shirt type is button_down, reformat to Button Down
             if "button_down" in self.schedule[self.today]["shirt"]:
-                shirt = (self.schedule[self.today]["shirt"].split()[0] + " " + self.schedule[self.today]["shirt"].split()[1].replace("_", " ")).title()
+                shirt = (self.schedule[self.today]["shirt"].replace("_", " ")).title()
+            elif "/" in self.schedule[self.today]["shirt"]:
+                shirt = (self.schedule[self.today]["shirt"].replace("/", " & ")).title()
             else:
                 shirt = self.schedule[self.today]["shirt"].title()
             jacket = self.schedule[self.today]["jacket"].title()
@@ -354,12 +366,14 @@ class WardrobeGenerator():
         for key, value in self.schedule.items():
             if key != "Saturday" and key != "Sunday":
                 if isinstance(value, dict):
-                    boots = value["boots"].title()
+                    boots = (value["boots"].replace("_", " ")).title()
                     chinos = value["chinos"].title()
                     belt = value["belt"].title()
                     # If shirt type is button_down, reformat to Button Down
                     if "button_down" in value["shirt"]:
-                        shirt = (value["shirt"].split()[0] + " " + value["shirt"].split()[1].replace("_", " ")).title()
+                        shirt = (value["shirt"].replace("_", " ")).title()
+                    elif "/" in value["shirt"]:
+                        shirt = (value["shirt"].replace("/", " & ")).title()
                     else:
                         shirt = value["shirt"].title()
                     jacket = value["jacket"].title()
@@ -423,13 +437,15 @@ class WardrobeGenerator():
             self.prioritize_days()
             self.build_days()
             self.save_schedule()
-            self.preview_update()
         else:
             print("Error loading forecast.  Check forecast file exists.")
 
 if __name__ == "__main__":
     ### Testing ####
     gen = WardrobeGenerator()
-    # gen.run()
-    # print(gen.manual_run())
-    # gen.rebuild_schedule()
+    if sys.argv[1] == "--rebuild":
+        gen.rebuild_schedule()
+    elif sys.argv[1] == "--preview":
+        gen.preview_update()
+    else:
+        print("No argument passed.  Options: --rebuild or --preview.")
