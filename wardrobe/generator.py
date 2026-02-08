@@ -200,9 +200,9 @@ class WardrobeGenerator():
         if boots == "canyon_captain" or boots == "pecan_douglas":
             self.schedule[day]["belt"] = "canyon"
         elif "charcoal" in boots:
-            if chinos == "black" or chinos == "grey":
+            if chinos == "black":
                 self.schedule[day]["belt"] = "black"
-            elif chinos == "navy":
+            elif chinos == "navy" or chinos == "grey":
                 self.schedule[day]["belt"] = random.choice(["canyon", "black"])
             else:
                 self.schedule[day]["belt"] = "canyon"
@@ -416,16 +416,6 @@ class WardrobeGenerator():
             cves=None
             )
         email.run_update("preview")
-
-    def manual_run(self):
-        """Testing ground."""
-        self.load_config()
-        if self.load_forecast():
-            self.parse_forecast()
-            # --- #
-            if self.load_schedule():
-                self.update_inventory()
-            return self.daily_fit()
     
     def rebuild_schedule(self):
         """Rebuild the schedule with new items."""
@@ -448,4 +438,3 @@ if __name__ == "__main__":
         gen.preview_update()
     else:
         print("No argument passed.  Options: --rebuild or --preview.")
-
