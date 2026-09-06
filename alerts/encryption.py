@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+# This is a hacky solution for manually testing individual modules.
 import sys
-sys.path.append('.')
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from utils.file_utils import config_path, check_file
+import argparse
+from utils.file_utils import config_path, check_file, key_path
 from cryptography.fernet import Fernet
 import json
 
@@ -12,17 +15,15 @@ class Encryptor():
 
     def __init__(self):
         self.key = ""
-        self.key_path = f"\\key\path" # UPDATE THIS PATH TO WHERE YOUR KEY LIVES
+        self.key_path = key_path()
         self.target = config_path("smtp")
 
     def generate_key(self):
         """Create key to be used for encryption and decryption."""
-        # If key does not already exist, make a key.
         if not self.check_key():
             self.key = Fernet.generate_key()
             with open(self.key_path, "wb") as file:
                 file.write(self.key)
-            # Load the freshly made key.
             self.load_key()
 
     def check_key(self):
@@ -36,31 +37,28 @@ class Encryptor():
 
     def encrypt(self):
         """Encrypt the target file."""
-        # Check to see if a key exists.  If yes, load the key, if not, make and load the key.
         if self.check_key():
             self.load_key()
         else:
             self.generate_key()
-        # Create encryption object, load the original data, encrypt it, overwrite the file with the encrypted data.
         fernet = Fernet(self.key)
         with open(self.target, "rb") as file:
             original = file.read()
-        encrypted = Fernet.encrypt(self=fernet, data=original)
+        encrypted = fernet.encrypt(original)
         with open(self.target, "wb") as file:
             file.write(encrypted)
 
     def decrypt(self):
         """Decrypt the target file."""
         self.load_key()
-        # Create encryption object, load the encrypted data, decrypt it, overwrite the file with the decrypted data.
         fernet = Fernet(self.key)
         with open(self.target, "rb") as file:
             encrypted = file.read()
-        original = Fernet.decrypt(self=fernet, token=encrypted)
+        original = fernet.decrypt(encrypted)
         data = json.loads(original.decode("utf-8"))
         return data
-    
-    def save_config(self):
+
+    def edit_config(self):
         """Save the decrypted file to modify config."""
         data = self.decrypt()
         with open(self.target, "w") as file:
@@ -68,7 +66,14 @@ class Encryptor():
 
 
 if __name__ == "__main__":
-    enc = Encryptor()
-    enc.encrypt()
-    # enc.save_config()
+    parser = argparse.ArgumentParser(description="Encrypt or decrypt the smtp config for editing.")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--encrypt", action="store_true", help="Encrypt the target config file.")
+    group.add_argument("--decrypt", action="store_true", help="Decrypt the target config file to edit it.")
+    args = parser.parse_args()
 
+    enc = Encryptor()
+    if args.encrypt:
+        enc.encrypt()
+    elif args.decrypt:
+        enc.edit_config()

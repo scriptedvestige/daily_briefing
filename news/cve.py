@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
+# This is a hacky solution for manually testing individual modules.
 import sys
-sys.path.append('.')
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
+from datetime import datetime
 from utils.time_utils import filename_format, filename_delta, iso_format, iso_delta, time_of_day
-from utils.file_utils import config_path, news_out, check_file
+from utils.file_utils import config_path, check_file, cve_check_path
 import requests
 import json
-import os
+
+
+def local_utc_offset():
+    """Return current local UTC offset in ISO 8601 format (e.g. -07:00), accounting for DST automatically."""
+    offset = datetime.now().astimezone().strftime("%z")  # e.g. "-0700"
+    return f"{offset[:3]}:{offset[3:]}"
 
 
 class CveScraper():
@@ -17,8 +25,8 @@ class CveScraper():
         self.time_of_day = time_of_day()
         self.file_date = filename_format()
         self.file_yesterday = filename_delta(-1)
-        self.today_search = f"{iso_format()}T23:59:59.999-08:00"
-        self.yesterday_search = f"{iso_delta(-1)}T00:00:00.000"
+        self.today_search = f"{iso_format()}T23:59:59.999{local_utc_offset()}"
+        self.yesterday_search = f"{iso_delta(-1)}T00:00:00.000{local_utc_offset()}"
         # Config
         self.url = ""
         self.endpoints = []
@@ -27,6 +35,8 @@ class CveScraper():
         self.cves = {"morning": {}, "midday": {}}
         self.cves_out = ""
         self.keyword_hit = ""
+        # Resilience tracking
+        self.skipped_endpoints = 0
     
     def load_config(self):
         """Load the config."""
@@ -39,20 +49,19 @@ class CveScraper():
     def load_cves(self, date):
         """Load previously sent CVEs."""
         data = {}
-        filename = f"cve_check_{date}.json"
-        filepath = os.path.join(news_out(), filename)
+        filepath = cve_check_path(date)
         if check_file(filepath):
             with open(filepath, "r") as file:
                 data = json.load(file)
             self.prev_output(data, date)
-    
+
     def prev_output(self, data, date):
         """Build the output variable with data loaded from files or pulled from the API endpoints."""
         if date == self.file_date and time_of_day() == "midday" and len(data["morning"].values()) > 0:
             for key, value in data["morning"].items():
                 self.cves["morning"][key] = value
         for item in data.keys():
-            if len(item) > 0:
+            if len(data[item]) > 0:
                 for entry in data[item].keys():
                     self.prev_out.append(entry)
 
@@ -68,8 +77,9 @@ class CveScraper():
         
     def make_call(self, params):
         """Call the API given the URL and parameters."""
-        r = requests.get(self.url, params)
-        return r.json()
+        response = requests.get(self.url, params, timeout=15)
+        response.raise_for_status()
+        return response.json()
     
     def parse_data(self, data, endpoint):
         """Parse the data returned by the API call."""
@@ -138,8 +148,7 @@ class CveScraper():
 
     def save_output(self):
         """Save the parsed output to a JSON file."""
-        filename = f"cve_check_{self.file_date}.json"
-        filepath = os.path.join(news_out(), filename)
+        filepath = cve_check_path(self.file_date)
         with open(filepath, "w") as file:
             json.dump(self.cves, file, indent=4)
 
@@ -170,22 +179,20 @@ class CveScraper():
         if self.time_of_day == "midday":
             self.load_cves(self.file_date)
         for entry in self.endpoints:
-            params = self.set_parameters(entry)
-            data = self.make_call(params)
-            self.parse_data(data, entry)
+            try:
+                params = self.set_parameters(entry)
+                data = self.make_call(params)
+                self.parse_data(data, entry)
+            except Exception:
+                # If one endpoint fails or returns something unexpected, skip it — the rest still run.
+                self.skipped_endpoints += 1
+                continue
         self.sort_cvss()
         self.save_output()
+        print(f"[CVE] Endpoints skipped: {self.skipped_endpoints}/{len(self.endpoints)} | CVEs matched: {len(self.cves[self.time_of_day])}")
         return self.format_data(self.time_of_day)
 
 
 if __name__ == "__main__":
     cve = CveScraper()
     data = cve.run()
-    """ from alerts import send_email
-    emailer = send_email.Emailer(
-        forecast="Testing...", 
-        wardrobe="Test", 
-        news="Yeehaw!", 
-        cves=data
-    )
-    emailer.run() """ 

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+# This is a hacky solution for manually testing individual modules.
 import sys
-sys.path.append('.')
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from utils.time_utils import iso_format, filename_format
+from utils.time_utils import iso_format, filename_format, day_name, is_pto
 from utils.file_utils import config_path, todays_forecast
 import requests
 import json
@@ -20,33 +22,43 @@ class WeatherForecast:
         self.daily_message = ""
         # API
         self.url = ""
-        self.header = "" # NWS requests a user-agent with contact info to use their API.
+        self.header = {}
+
+    def select_endpoint(self):
+        """Choose 'work' or 'home' NWS config based on day type."""
+        if day_name() in ("Saturday", "Sunday") or is_pto(self.today):
+            return "home"
+        return "work"
 
     def load_config(self):
         """Load parameters from the config file."""
-        with open(self.config, "r+") as config:
+        with open(self.config, "r") as config:
             config_data = json.load(config)
-            self.url = config_data["nws"]["url"]
-            self.header = config_data["nws"]["user-agent"]
+        endpoint = self.select_endpoint()
+        self.url = config_data["nws"][endpoint]["url"]
+        self.header = config_data["nws"][endpoint]["user-agent"]
 
     def call_api(self):
-        """Call API and write data to forecast.txt"""
-        api_data = requests.get(url=self.url, headers=self.header).json()
+        """Call API and return forecast periods."""
+        response = requests.get(url=self.url, headers=self.header, timeout=10)
+        response.raise_for_status()
+        api_data = response.json()
         forecast = api_data["properties"]["periods"]
         return forecast
 
     def save_file(self, forecast):
-        """Save forcast data to json file."""
+        """Save forecast data to json file."""
         with open(self.json_dump, "w") as file:
             json.dump(forecast, file, indent=4)
 
     def build_message(self, forecast):
         """Build the daily message from the forecast data."""
-        for number in range(0,3):
+        periods = min(3, len(forecast))
+        for number in range(periods):
             line = forecast[number]
-            day_name = line["name"]
+            period_name = line["name"]
             detailed_forecast = line["detailedForecast"]
-            self.daily_message += f"<b><u>{day_name}</u></b><br>{detailed_forecast}<br><br>"
+            self.daily_message += f"<b><u>{period_name}</u></b><br>{detailed_forecast}<br><br>"
         return self.daily_message
     
     def run(self):

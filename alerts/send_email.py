@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+# This is a hacky solution for manually testing individual modules.
 import sys
-sys.path.append('.')
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from utils.time_utils import day_name, filename_format, time_of_day, briefing_message_date, current_date_time
 from utils.file_utils import briefing_template, preview_template, sent_brief_title, sent_preview_title, config_path
@@ -56,7 +58,7 @@ class Emailer:
     def inject_data(self, template, filepath):
         """Inject the data into the template."""
         wardrobe = ""
-        if "preview" not in filepath and self.today == "Sunday":
+        if "preview" not in str(filepath) and self.today == "Sunday":
             wardrobe = "Check the weekly wardrobe preview!<br><br>"
         else:
             wardrobe = self.wardrobe

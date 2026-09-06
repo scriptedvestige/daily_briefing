@@ -16,43 +16,43 @@ class CleanUp():
         # Paths
         self.all_dirs = [alerts_out(), news_out(), wardrobe_out(), weather_out()]
 
+    def extract_date(self, filename):
+        """Pull the YYYYMMDD date out of a filename, or return None if it doesn't match the expected pattern."""
+        stem = filename.split("_")[-1]
+        if not stem.endswith(".json"):
+            return None
+        candidate = stem[:-5]
+        if len(candidate) == 8 and candidate.isdigit():
+            return candidate
+        return None
+
+    def clean_dirs(self, keep_dates):
+        """Remove files in all output dirs whose date isn't in keep_dates. Files that don't match the expected naming pattern are left alone."""
+        removed = 0
+        skipped = 0
+        for directory in self.all_dirs:
+            for filename in os.listdir(directory):
+                full_path = os.path.join(directory, filename)
+                if not os.path.isfile(full_path):
+                    continue
+                file_date = self.extract_date(filename)
+                if file_date is None:
+                    # Doesn't match the expected naming pattern — leave it alone rather than guess.
+                    skipped += 1
+                    continue
+                if file_date not in keep_dates:
+                    os.remove(full_path)
+                    removed += 1
+        print(f"[Cleaner] Removed {removed} old file(s), skipped {skipped} unrecognized file(s).")
+
     def run(self):
-        """Run the cleaner."""
-        # Only run on Saturday morning.
+        """Run the cleaner. Only runs on Saturday morning."""
         if self.today == "Saturday" and time_of_day() == "morning":
-            today_str = filename_format()
-            yesterday_str = filename_delta(-1)
-            for dir in self.all_dirs:
-                # Grab all filenames in directory.
-                all_files = os.listdir(dir)
-                for file in all_files:
-                    """
-                    Get the file date from the file name.
-                    Doing it this way is simpler because the date is in the name so it requires no imports or time format conversions.
-                    """
-                    file_date = file.split("_")[-1][:-5]
-                    # If file date is older than today or yesterday, delete the file after ensuring it exists.
-                    if file_date not in (today_str, yesterday_str):
-                        full_path = os.path.join(dir, file)
-                        if os.path.exists(full_path):
-                            os.remove(full_path)
+            self.clean_dirs(keep_dates=(filename_format(), filename_delta(-1)))
 
     def manual_run(self):
-        """Manually run the cleaner."""
-        for dir in self.all_dirs:
-            # Grab all filenames in directory.
-            all_files = os.listdir(dir)
-            for file in all_files:
-                """
-                Get the file date from the file name.
-                Doing it this way is simpler because the date is in the name so it requires no imports or time format conversions.
-                """
-                file_date = file.split("_")[-1][:-5]
-                # If file date is older than current date, delete the file after ensuring it exists.
-                if file_date != filename_format():
-                    full_path = os.path.join(dir, file)
-                    if os.path.exists(full_path):
-                        os.remove(full_path)
+        """Manually run the cleaner, keeping only today's files."""
+        self.clean_dirs(keep_dates=(filename_format(),))
 
 
 if __name__ == "__main__":

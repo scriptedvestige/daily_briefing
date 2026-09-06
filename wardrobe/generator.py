@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+# This is a hacky solution for manually testing individual modules.
 import sys
-sys.path.append('.')
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from utils.time_utils import day_name, time_of_day, filename_format, filename_delta, future_dayname, isPTO, iso_format
+from utils.time_utils import day_name, time_of_day, filename_format, filename_delta, future_dayname, is_pto, iso_format
 from utils.file_utils import wardrobe_template, weekly_wardrobe, last_weekly_wardrobe, todays_forecast, check_file, config_path
 import json
 import random
@@ -30,6 +32,7 @@ class WardrobeGenerator():
         self.precip_rules = {}
         self.inventory = {}
         self.priority = {}
+        self.original_rules = {}
         # Forecast
         self.forecast_path = todays_forecast(filename_format())
         self.weekly_fc = {}
@@ -44,11 +47,11 @@ class WardrobeGenerator():
             return filename_format()
 
     def load_config(self):
-        """Load the inventory json."""
         with open(self.config_path, "r") as file:
             self.inventory = json.load(file)
         self.temp_rules = self.inventory["rules"]["temp"]
         self.precip_rules = self.inventory["rules"]["precip"]
+        self.original_rules = json.loads(json.dumps(self.inventory["rules"]))
 
     def load_forecast(self):
         """Load the forecast json."""
@@ -61,14 +64,13 @@ class WardrobeGenerator():
 
     def parse_forecast(self):
         """Parse the forecast json."""
-        for dict in self.weekly_fc:
-            date = dict["startTime"].split("T")[0]
+        for entry in self.weekly_fc:
+            date = entry["startTime"].split("T")[0]
             dayname = future_dayname(date)
-            if dict["isDaytime"] and dayname in self.workdays:
-                dayname = dayname
-                temp = dict["temperature"]
-                precip = dict["probabilityOfPrecipitation"]["value"]
-                wind = int(dict["windSpeed"].split()[-2])
+            if entry["isDaytime"] and dayname in self.workdays:
+                temp = entry["temperature"]
+                precip = entry["probabilityOfPrecipitation"]["value"]
+                wind = int(entry["windSpeed"].split()[-2])
                 feels_like = self.feels_like_temp(raw_temp=temp, wind_speed=wind)
                 self.parsed_fc[dayname] = {"date":date, "temp":temp, "feelsLike":feels_like, "precip":precip, "wind":wind}
 
@@ -77,12 +79,13 @@ class WardrobeGenerator():
         with open(self.schedule_template, "r") as template:
             self.schedule = json.load(template)
 
-    def check_temp_range(self, temp, shirts):
+    def check_temp_range(self, temp, shirts, pants):
         """Check the temp value from the forecast against the ranges for shirts."""
         for i, (low, high) in enumerate(self.temp_rules["range"]):
             if low <= temp <= high:
-                choice = shirts[i]
-                return choice
+                shirt = shirts[i]
+                pant = pants[i]
+                return {"shirt_type": shirt, "pant_type":pant}
 
     def check_precip_range(self, precip, boots):
         """Check the precip value from the forecast against the ranges for boots."""
@@ -125,25 +128,35 @@ class WardrobeGenerator():
         """Set the priority of the day based on it's score."""
         for day in self.parsed_fc:
             # Choose shirt type based on forecasted temperature.
-            shirt_type = self.check_temp_range(temp=self.parsed_fc[day]["feelsLike"], shirts=self.temp_rules["shirt"])
+            shirt_pant = self.check_temp_range(temp=self.parsed_fc[day]["feelsLike"], shirts=self.temp_rules["shirt"], pants=self.temp_rules["pants"])
             # Score the day for it's priority and add to dictionary.
             self.priority[day] = [self.day_score(temp_score=self.temp_score(
-                shirt_type=shirt_type, feels_like=self.parsed_fc[day]["feelsLike"]), 
+                shirt_type=shirt_pant["shirt_type"], feels_like=self.parsed_fc[day]["feelsLike"]), 
                 precip_score=self.precip_score(self.parsed_fc[day]["precip"])
                 ),
-                shirt_type]
+                shirt_pant["shirt_type"],
+                shirt_pant["pant_type"]]
         # Sort the priority dictionary.
         self.priority = dict(sorted(self.priority.items(), key=lambda item: item[1][0]))
 
     def build_days(self):
         """Choose the items for the given day."""
         for day in self.priority:
-            if not isPTO(self.parsed_fc[day]["date"]):
+            if not is_pto(self.parsed_fc[day]["date"]):
+                pant_type = self.priority[day][2]
                 boot_type = self.check_precip_range(precip=self.parsed_fc[day]["precip"], boots=self.precip_rules["boots"])
                 boot_color = self.choose_boots(boot_type).split()[0]
-                chino_inv = self.inventory["rules"]["boots"][boot_color]
-                shirt = self.choose_chinos(boots=boot_color, chinos=chino_inv, shirt=self.priority[day][1], day=day)
-                shirt_choice = self.choose_shirt(shirt, day)
+                chino_choices = self.inventory["rules"]["boots"][boot_color][pant_type]
+                if not chino_choices:
+                    boot_color = self.retry_boots(boot_type, pant_type)
+                    if boot_color is None:
+                        self.schedule[day] = "No compatible outfit left this week — chino inventory exhausted."
+                        continue
+                    chino_choices = self.inventory["rules"]["boots"][boot_color][pant_type]
+                shirt = self.choose_chinos(boots=boot_color, chino_choices=chino_choices, shirt=self.priority[day][1], day=day, pant_type=pant_type)
+                shirt_choice = self.choose_shirt(shirt_type=shirt, day=day, pant=pant_type)
+                if shirt_choice is None:
+                    continue
                 self.remove_shirt(shirt_type=shirt, shirt_choice=shirt_choice)
                 self.need_jacket(day)
             else:
@@ -157,59 +170,58 @@ class WardrobeGenerator():
             boots = random.choice(self.inventory["wet_boots"])
         return boots
 
-    def choose_chinos(self, boots, chinos, shirt, day):
+    def retry_boots(self, boot_type, pant_type):
+        """Choose a new boot color that still has available chino options for the given pant type,
+        used when the first pick has run out of compatible chinos for this pant type."""
+        pool = self.inventory["dry_boots"] if boot_type == "dry" else self.inventory["wet_boots"]
+        candidates = [b for b in pool if self.inventory["rules"]["boots"][b][pant_type]]
+        if not candidates:
+            return None
+        return random.choice(candidates)
+
+    def choose_chinos(self, boots, chino_choices, shirt, day, pant_type):
         """Choose the color chinos and return shirt type."""
-        adj_options = chinos
         shirt_type = ""
         # If no button downs left, choose flannel instead.
         if shirt == "button_down" and len(self.inventory[shirt]) == 0:
             shirt_type = "flannel"
         else:
             shirt_type = shirt
-        # If shirt is button down, exclude navy, congos, and greenwoods chinos.
-        if shirt_type == "button_down":
-            adj_options = self.adjust_options(boots)
-        chinos = random.choice(adj_options)
-        self.remove_chinos(chinos)
+        chino_choice = random.choice(chino_choices)
+        self.remove_chinos(pant_type=pant_type, chinos=chino_choice)
         # Save boot color and chinos to schedule for the given day
         self.schedule[day]["boots"] = boots
-        self.schedule[day]["chinos"] = chinos
-        self.choose_belt(boots, chinos, day)
+        self.schedule[day]["chinos"] = chino_choice
+        self.choose_belt(boots=boots, day=day)
         return shirt_type
-    
-    def adjust_options(self, boot):
-        """Use adjusted inventory to account for button down rules."""
-        adjusted_options = self.inventory["rules"]["boots"][boot].copy()
-        if "navy" in adjusted_options:
-            adjusted_options.remove("navy")
-        if "congos" in adjusted_options:
-            adjusted_options.remove("congos")
-        if "greenwoods" in adjusted_options:
-            adjusted_options.remove("greenwoods")
-        return adjusted_options
 
-    def remove_chinos(self, chinos):
+    def remove_chinos(self, chinos, pant_type):
         """Remove the selected chinos from all lists in inventory."""
-        self.inventory["chinos"].remove(chinos)
+        if chinos in self.inventory[pant_type]:
+            self.inventory[pant_type].remove(chinos)
+        # Remove chino option from every boot rule
         for key in self.inventory["rules"]["boots"].keys():
-            if chinos in self.inventory["rules"]["boots"][key]:
-                self.inventory["rules"]["boots"][key].remove(chinos)
+            if chinos in self.inventory["rules"]["boots"][key][pant_type]:
+                self.inventory["rules"]["boots"][key][pant_type].remove(chinos)
 
-    def choose_belt(self, boots, chinos, day):
+    def add_chinos(self, chinos, pant_type):
+        """Undo remove_chinos: restore item to top-level inventory and every boot rule that originally allowed it."""
+        if chinos not in self.inventory[pant_type]:
+            self.inventory[pant_type].append(chinos)
+        for key in self.inventory["rules"]["boots"].keys():
+            if chinos in self.original_rules["boots"][key][pant_type] and chinos not in self.inventory["rules"]["boots"][key][pant_type]:
+                self.inventory["rules"]["boots"][key][pant_type].append(chinos)
+
+    def choose_belt(self, boots, day):
         """Choose the appropriate belt for the day."""
-        if boots == "canyon_captain" or boots == "pecan_douglas":
+        if boots == "charcoal_logger" or boots == "brown_logger":
             self.schedule[day]["belt"] = "canyon"
-        elif "charcoal" in boots:
-            if chinos == "black":
-                self.schedule[day]["belt"] = "black"
-            elif chinos == "navy" or chinos == "grey":
-                self.schedule[day]["belt"] = random.choice(["canyon", "black"])
-            else:
-                self.schedule[day]["belt"] = "canyon"
+        elif boots == "pecan_douglas":
+            self.schedule[day]["belt"] = "tan"
         else:
             self.schedule[day]["belt"] = "black"
 
-    def choose_shirt(self, shirt_type, day):
+    def choose_shirt(self, shirt_type, day, pant):
         """Choose a shirt color based on chino color."""
         shirt = ""
         if shirt_type == "button_down" and len(self.inventory[shirt_type]) == 0:
@@ -217,18 +229,16 @@ class WardrobeGenerator():
         else:
             shirt = shirt_type
         chino_color = self.schedule[day]["chinos"]
-        # Grab acceptable shirt colors for chino color
-        chino_rules = self.inventory["rules"]["chinos"][chino_color]
-        # Make list of available shirts to choose from based on type and color picked.
-        # Navy/black and olive/black button downs acceptable with black chinos.  Otherwise, black shirt not allowed with black chinos.
-        if shirt == "button_down" and chino_color == "black":
+        chino_rules = self.inventory["rules"][pant][chino_color]
+        if shirt == "button_down" and chino_color == "black" and "black" not in chino_rules:
             chino_rules.append("black")
-        # Make a list of shirt options based on shirt type and acceptable colors per pant color.
         shirt_options = [x for x in self.inventory[shirt] if x.split("/")[0] in chino_rules]
         if len(shirt_options) > 0:
             shirt_choice = random.choice(shirt_options)
         else:
-            shirt_choice = self.retry_choices(chino_color, shirt, day)
+            shirt_choice = self.retry_choices(chino=chino_color, shirt=shirt, day=day, pant_type=pant)
+            if shirt_choice is None:
+                return None
         self.schedule[day]["shirt"] = f"{shirt_choice} {shirt}"
         return shirt_choice
     
@@ -243,15 +253,24 @@ class WardrobeGenerator():
 
     def remove_shirt(self, shirt_type, shirt_choice):
         """Remove chosen shirt from inventory."""
-        self.inventory[shirt_type].remove(shirt_choice)
+        if shirt_choice in self.inventory[shirt_type]:
+            self.inventory[shirt_type].remove(shirt_choice)
 
-    def retry_choices(self, chino, shirt, day):
+    def retry_choices(self, chino, shirt, day, pant_type):
         """If no options available for item, choose new item."""
         boot_color = self.schedule[day]["boots"]
-        adj_options = self.inventory["rules"]["boots"][boot_color].copy()
-        self.choose_chinos(boots=boot_color, chinos=adj_options, shirt=shirt, day=day)
-        new_shirt = self.choose_shirt(shirt_type=shirt, day=day)
-        self.inventory["rules"]["boots"][boot_color].append(chino)
+        chino_choices = self.inventory["rules"]["boots"][boot_color][pant_type].copy()
+        if not chino_choices:
+            boot_type = self.check_precip_range(precip=self.parsed_fc[day]["precip"], boots=self.precip_rules["boots"])
+            new_boot_color = self.retry_boots(boot_type, pant_type)
+            if new_boot_color is None:
+                self.schedule[day] = "No compatible outfit left this week — chino inventory exhausted."
+                return None
+            boot_color = new_boot_color
+            chino_choices = self.inventory["rules"]["boots"][boot_color][pant_type].copy()
+        self.choose_chinos(boots=boot_color, chino_choices=chino_choices, shirt=shirt, day=day, pant_type=pant_type)
+        new_shirt = self.choose_shirt(shirt_type=shirt, day=day, pant=pant_type)
+        self.add_chinos(chinos=chino, pant_type=pant_type)
         return new_shirt
 
     def save_schedule(self):
@@ -276,39 +295,39 @@ class WardrobeGenerator():
 
     def double_check_boots(self):
         """Check updated forecast data and verify boots are still appropriate."""
+        if set(self.inventory["dry_boots"]) == set(self.inventory["wet_boots"]):
+            return
         new_precip = self.parsed_fc[self.today]["precip"]
         new_temp = self.parsed_fc[self.today]["feelsLike"]
-        # Get boot based on new precipitation chance.
         boot_type = self.check_precip_range(precip=new_precip, boots=self.precip_rules["boots"])
-        # Get shirt based on new temp.
-        shirt_type = self.check_temp_range(temp=new_temp, shirts=self.temp_rules["shirt"])
-        # If new boot different than scheduled boot, choose different boots, chinos, and belt for current day.
-        if boot_type == "danner" and self.schedule[self.today]["boots"] != "danner":
+        shirt_pant = self.check_temp_range(temp=new_temp, shirts=self.temp_rules["shirt"], pants=self.temp_rules["pants"])
+        pant_type = shirt_pant["pant_type"]
+        current_boots = self.schedule[self.today]["boots"]
+        correct_pool = self.inventory[f"{boot_type}_boots"]
+        if current_boots not in correct_pool:
             boot_color = self.choose_boots(boot_type)
+            chino_choices = self.inventory["rules"]["boots"][boot_color][pant_type]
+            if not chino_choices:
+                boot_color = self.retry_boots(boot_type, pant_type)
+                if boot_color is None:
+                    return
+                chino_choices = self.inventory["rules"]["boots"][boot_color][pant_type]
             self.schedule[self.today]["boots"] = boot_color
-            chinos = self.inventory["rules"]["boots"][boot_color]
-            if self.schedule[self.today]["chinos"] not in chinos:
-                self.choose_chinos(boots=boot_color, chinos=chinos, shirt=shirt_type, day=self.today)
+            if self.schedule[self.today]["chinos"] not in chino_choices:
+                self.choose_chinos(boots=boot_color, chino_choices=chino_choices, shirt=shirt_pant["shirt_type"], day=self.today, pant_type=pant_type)
             self.choose_belt(boots=boot_color, day=self.today)
 
     def double_check_shirt(self):
         """Check updated forecast data and verify shirt is still appropriate."""
-        shirt = ""
         new_temp = self.parsed_fc[self.today]["feelsLike"]
         # Get shirt type based on new temperature.
-        shirt_type = self.check_temp_range(temp=new_temp, shirts=self.temp_rules["shirt"])
-        # Check to ensure inventory greater than 0 for shirt type.
-        if len(self.inventory[shirt_type]) == 0:
-            pass
-        # If shirt type is list ["jacket", "flannel"], select flannel.
-        if type(shirt_type) == list:
-            shirt = shirt_type[1]
-        else:
-            shirt = shirt_type
+        shirt_pant = self.check_temp_range(temp=new_temp, shirts=self.temp_rules["shirt"], pants=self.temp_rules["pants"])
+        shirt = shirt_pant["shirt_type"]
         # If new shirt is different than scheduled shirt, choose a different shirt.
         if shirt not in self.schedule[self.today]["shirt"] and len(self.inventory[shirt]) > 0:
-            shirt_choice = self.choose_shirt(shirt_type=shirt, day=self.today)
-            self.remove_shirt(shirt_type=shirt_type, shirt_choice=shirt_choice)
+            shirt_choice = self.choose_shirt(shirt_type=shirt, day=self.today, pant=shirt_pant["pant_type"])
+            if shirt_choice is not None:
+                self.remove_shirt(shirt_type=shirt_pant["shirt_type"], shirt_choice=shirt_choice)
 
     def update_inventory(self):
         """Update the inventory for the selected item for schedule rebuilds."""
@@ -319,7 +338,10 @@ class WardrobeGenerator():
                 used_inventory[key] = value
         # Remove items used on other days from current inventory.
         for value in used_inventory.values():
-            self.remove_chinos(chinos=value["chinos"])
+            if value["chinos"] in self.inventory["bonobos"]:
+                self.remove_chinos(chinos=value["chinos"], pant_type="bonobos")
+            else:
+                self.remove_chinos(chinos=value["chinos"], pant_type="kuhl")
             shirt_color = value["shirt"].split()[0]
             shirt_type = value["shirt"].split()[1]
             if shirt_color in self.inventory[shirt_type]:
@@ -334,8 +356,11 @@ class WardrobeGenerator():
         # If schedule does not exist.
         elif not isinstance(self.schedule, dict):
             daily_fit = self.schedule
+        # If today isn't in the schedule at all.
+        elif self.today not in self.schedule:
+            daily_fit = "No schedule entry found for today."
         # If value is not dictionary, return the string.
-        elif not isinstance(self.schedule[self.today], dict) or isPTO(self.curr_date):
+        elif not isinstance(self.schedule[self.today], dict) or is_pto(self.curr_date):
             daily_fit = self.schedule[self.today]
         else:
             self.double_check_boots()
@@ -347,8 +372,6 @@ class WardrobeGenerator():
             # If shirt type is button_down, reformat to Button Down
             if "button_down" in self.schedule[self.today]["shirt"]:
                 shirt = (self.schedule[self.today]["shirt"].replace("_", " ")).title()
-            elif "/" in self.schedule[self.today]["shirt"]:
-                shirt = (self.schedule[self.today]["shirt"].replace("/", " & ")).title()
             else:
                 shirt = self.schedule[self.today]["shirt"].title()
             jacket = self.schedule[self.today]["jacket"].title()
@@ -371,8 +394,6 @@ class WardrobeGenerator():
                     # If shirt type is button_down, reformat to Button Down
                     if "button_down" in value["shirt"]:
                         shirt = (value["shirt"].replace("_", " ")).title()
-                    elif "/" in value["shirt"]:
-                        shirt = (value["shirt"].replace("/", " & ")).title()
                     else:
                         shirt = value["shirt"].title()
                     jacket = value["jacket"].title()
@@ -429,12 +450,18 @@ class WardrobeGenerator():
         else:
             print("Error loading forecast.  Check forecast file exists.")
 
+
 if __name__ == "__main__":
-    ### Testing ####
+    import argparse
+    parser = argparse.ArgumentParser(description="Rebuild or preview the wardrobe schedule.")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--rebuild", action="store_true", help="Rebuild the weekly schedule.")
+    group.add_argument("--preview", action="store_true", help="Send a test of the weekly preview email.")
+    args = parser.parse_args()
+
     gen = WardrobeGenerator()
-    if sys.argv[1] == "--rebuild":
+    if args.rebuild:
         gen.rebuild_schedule()
-    elif sys.argv[1] == "--preview":
+    elif args.preview:
         gen.preview_update()
-    else:
-        print("No argument passed.  Options: --rebuild or --preview.")
+

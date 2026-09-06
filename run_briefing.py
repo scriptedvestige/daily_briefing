@@ -26,7 +26,7 @@ def safe_run(module_name):
                     log.write(f"{e}\n")
                     log.write(traceback.format_exc())
                     log.write("\n" + "-"*60 + "\n")
-                    return f"{module_name} failed - check cron.log<br><br>"
+                    return f"{module_name} failed - check cron.log.<br><br>"
         return wrapper
     return decorator
 
